@@ -1,8 +1,6 @@
-﻿module Access
+﻿module IdentityAccess
 
 open System
-
-type set<'T> = System.Collections.Generic.HashSet<'T>
 
 
 type TenantId = TenantId of string
@@ -25,11 +23,12 @@ type FullName = {
 };
 
 type EventMeta = {
-    version : string;
+    version : int;
     occurredOn : DateTime;
     tenantId : string;
     userName : string;
 }
+    with static member Null = { version = 0; occurredOn = DateTime.MinValue; tenantId = null; userName = null }
 
 
 module Tenant =
@@ -39,7 +38,7 @@ module Tenant =
         active : bool;
         description : string;
         name : string;
-        invitations : RegistrationInvitation set;
+        invitations : RegistrationInvitation Set;
     }
 
     and RegistrationInvitation = {
@@ -122,13 +121,13 @@ module User =
 
 module Group =    
 
-    let [<Literal>] RoleGroupPrefix = "ROLE-INTERNAL-GROUP: "    
+    let [<Literal>] internal RoleGroupPrefix = "ROLE-INTERNAL-GROUP: "    
 
     type Group = {        
         name : string;
         description : string;
         tenantId : TenantId;
-        groupMembers : GroupMember set;
+        groupMembers : GroupMember Set;
     }
     and GroupMember = {
         tenantId : TenantId;
@@ -146,34 +145,63 @@ module Group =
         | RemoveUser of User.User
 
     type Event =
-        | GroupAdded of EventMeta * string * string
-        | GroupRemoved of EventMeta * string * string
-        | UserAdded of EventMeta * string
-        | UserRemoved of EventMeta * string
+        | GroupMemberAdded of string * string
+        | GroupMemberRemoved of string * string
+        | GroupUserAdded of string * string
+        | GroupUserRemoved of string * string
     
 
+    let apply (group:Group) =
+        let changeMembership change (memberName,memberType) = { group with groupMembers = group.groupMembers |> change { tenantId = group.tenantId; name = memberName; memberType = memberType } }
+        let addMember = changeMembership Set.add
+        let removeMember = changeMembership Set.remove
+        function
+        | GroupMemberAdded (_,memberName)   -> addMember (memberName,Group)
+        | GroupMemberRemoved (_,memberName) -> removeMember (memberName,Group)
+        | GroupUserAdded (_,userName)       -> addMember (userName,User)
+        | GroupUserRemoved (_,userName)     -> removeMember (userName,User)
 
-    let exec (group:Group) = 
-    
-        let toGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
 
-        let userGroupMember (user:User.User) = { tenantId = group.tenantId; name = group.name; memberType = User }
+    let exec (group:Group) =     
+        let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
+        let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
+        let isInternalGroup = group.name.StartsWith(RoleGroupPrefix)        
 
-        let isInternalGroup (group:Group) = group.name.StartsWith(RoleGroupPrefix)
+        function                       
+         
+        | AddGroup (groupToAdd,isMemberGroup) ->            
+            match isInternalGroup with
+            | true -> ["Internal group."] |> Choice2Of2 
+            | _ -> 
+                match group.groupMembers |> Set.contains (groupToAdd |> groupToGroupMember) with
+                | false -> GroupMemberAdded(group.name, groupToAdd.name) |> Choice1Of2
+                | _     -> ["Already member."] |> Choice2Of2                                 
 
-        function                        
-        | AddGroup (groupToAdd,isMemberGroup) ->
-            match group.groupMembers.Add(groupToAdd |> toGroupMember),(isInternalGroup group) with
-            | true,true ->                 
-                ()
-            | _ -> ()
-
-        | AddUser user -> 
+        | AddUser user ->             
+            match isInternalGroup with
+            | true -> ["Internal group."] |> Choice2Of2 
+            | _ ->
+                match group.groupMembers |> Set.contains (user |> userToGroupMember) with
+                | false -> GroupUserAdded(group.name, user.userName) |> Choice1Of2
+                | _ -> ["Already member."] |> Choice2Of2
             
-            ()
-            
 
-        | _ -> ()
+        | RemoveGroup groupToRemove ->
+            match isInternalGroup with
+            | true -> ["Internal group."] |> Choice2Of2 
+            | _ -> 
+                match group.groupMembers |> Set.contains (groupToRemove |> groupToGroupMember) with
+                | true -> GroupMemberRemoved(group.name, groupToRemove.name) |> Choice1Of2
+                | _ -> ["Not member."] |> Choice2Of2
+
+        | RemoveUser user ->
+            match isInternalGroup with
+            | true -> ["Internal group."] |> Choice2Of2
+            | _ ->
+                match group.groupMembers |> Set.contains (user |> userToGroupMember) with
+                | true -> GroupUserRemoved(group.name, user.userName) |> Choice1Of2
+                | _ -> ["Not member"] |> Choice2Of2
+                           
 
 
             
@@ -184,10 +212,11 @@ module Group =
 module Role =       
 
     type Role = {
+        tenantId : TenantId;
         name : string;
         description : string;
         supportsNesting : bool;
-        tenantId : TenantId;
+        group : Group.Group;
     }
 
     type Command =
@@ -197,8 +226,19 @@ module Role =
         | UnassignUser of User.User
         
     type Event =
-        | GroupAssignedToRole of EventMeta * string
+        | GroupAssignedToRole of EventMeta * string * string
         | GroupUnassignedFromRole of EventMeta * string
         | RoleProvisioned of EventMeta * string
         | UserAssignedToRole of EventMeta * string * string * string
-        | UserUnassignedFromRole of EventMeta * string            
+        | UserUnassignedFromRole of EventMeta * string
+
+    
+//    let apply (role:Role) = function
+//    | GroupAssignedToRole(_,roleName,groupName) -> { role with group = role.group.ad
+//
+//    let exec (role:Role) = function
+//    | AssignGroup (group,isMemberGroup) -> GroupAssignedToRole(EventMeta.Null, group.name)
+//    | _ ->  UserUnassignedFromRole(EventMeta.Null, null)       
+        
+        
+    
