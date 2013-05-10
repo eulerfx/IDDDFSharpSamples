@@ -41,7 +41,11 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IdentityAccess.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="User.fs" />
+    <Compile Include="Group.fs" />
+    <Compile Include="Role.fs" />
+    <Compile Include="Tenant.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
