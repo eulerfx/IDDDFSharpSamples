@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "IDDDFSharp", "IDDDFSharp\IDDDFSharp.fsproj", "{73538AD1-F63D-4750-977C-AC6C92A39F41}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "IdentityAccess", "IDDDFSharp\IdentityAccess.fsproj", "{73538AD1-F63D-4750-977C-AC6C92A39F41}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
