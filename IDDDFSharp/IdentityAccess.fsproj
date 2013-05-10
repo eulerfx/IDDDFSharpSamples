@@ -8,9 +8,9 @@
     <ProjectGuid>73538ad1-f63d-4750-977c-ac6c92a39f41</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>IDDDFSharp</RootNamespace>
-    <AssemblyName>IDDDFSharp</AssemblyName>
+    <AssemblyName>IdentityAccess</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>IDDDFSharp</Name>
+    <Name>IdentityAccess</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

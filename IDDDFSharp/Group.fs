@@ -3,17 +3,21 @@
 let [<Literal>] internal RoleGroupPrefix = "ROLE-INTERNAL-GROUP: "    
 
 type Group = {        
-    name : string;
-    description : string;
     tenantId : TenantId;
-    groupMembers : GroupMember Set;
+    name : string;
+    description : string;    
+    members : GroupMember Set;
 }
+
 and GroupMember = {
     tenantId : TenantId;
     name : string;
     memberType : GroupMemberType;
 }
+
 and GroupMemberType = Group | User
+ 
+let Zero = { tenantId = TenantId(""); name = ""; description = ""; members = Set.empty; }
     
 type IsMemberGroup = Group -> GroupMember -> bool
 
@@ -25,50 +29,54 @@ type Command =
     | RemoveUserMember of User.User
 
 type Event =
-    | Created of string
-    | GroupMemberAdded of string * string
-    | GroupMemberRemoved of string * string
-    | GroupUserAdded of string * string
-    | GroupUserRemoved of string * string
+    | Created of TenantId * string * string
+    | GroupMemberAdded of GroupMember
+    | GroupMemberRemoved of GroupMember
+    | GroupUserAdded of GroupMember
+    | GroupUserRemoved of GroupMember
     
-let make (tenantId,name,description) = { tenantId = tenantId; name = name; description = description; groupMembers = Set.empty }
+let make (tenantId,name,description) = { tenantId = tenantId; name = name; description = description; members = Set.empty }
+
+let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
+
+let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
 
 let apply (group:Group) =
-    let changeMembership change (memberName,memberType) = { group with groupMembers = group.groupMembers |> change { tenantId = group.tenantId; name = memberName; memberType = memberType } }
-    let addMember = changeMembership Set.add
-    let removeMember = changeMembership Set.remove
+    let change change groupMember = { group with members = group.members |> change groupMember }
+    let add = change Set.add
+    let remove = change Set.remove
     function
-    | Created (name)                    -> { group with name = name }
-    | GroupMemberAdded (_,memberName)   -> addMember (memberName,Group)
-    | GroupMemberRemoved (_,memberName) -> removeMember (memberName,Group)
-    | GroupUserAdded (_,userName)       -> addMember (userName,User)
-    | GroupUserRemoved (_,userName)     -> removeMember (userName,User)
+    | Created (tenantId,name,description) -> { tenantId = tenantId; name = name; description = description; members = Set.empty }
+    | GroupMemberAdded groupMember        -> groupMember |> add 
+    | GroupMemberRemoved groupMember      -> groupMember |> remove 
+    | GroupUserAdded groupMember          -> groupMember |> add 
+    | GroupUserRemoved groupMember        -> groupMember |> remove 
 
 
 let exec (group:Group) =     
-    let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
-    let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
+        
     let isInternalGroup = group.name.StartsWith(RoleGroupPrefix)        
 
     function                       
          
-    | Create (tenantId,name,description) ->
-        Created(name) |> Choice1Of2
+    | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Choice1Of2
 
     | AddGroupMember (groupToAdd,isMemberGroup) ->            
         match isInternalGroup with
         | true -> ["Internal group."] |> Choice2Of2 
         | _ -> 
-            match group.groupMembers |> Set.contains (groupToAdd |> groupToGroupMember) with
-            | false -> GroupMemberAdded(group.name, groupToAdd.name) |> Choice1Of2
+            let groupMember = groupToAdd |> groupToGroupMember
+            match group.members |> Set.contains groupMember with
+            | false -> groupMember |> GroupMemberAdded |> Choice1Of2
             | _     -> ["Already member."] |> Choice2Of2                                 
 
     | AddGroupUser user ->             
         match isInternalGroup with
         | true -> ["Internal group."] |> Choice2Of2 
         | _ ->
-            match group.groupMembers |> Set.contains (user |> userToGroupMember) with
-            | false -> GroupUserAdded(group.name, user.userName) |> Choice1Of2
+            let groupMember = user |> userToGroupMember
+            match group.members |> Set.contains groupMember with
+            | false -> groupMember |> GroupUserAdded |> Choice1Of2
             | _ -> ["Already member."] |> Choice2Of2
             
 
@@ -76,14 +84,16 @@ let exec (group:Group) =
         match isInternalGroup with
         | true -> ["Internal group."] |> Choice2Of2 
         | _ -> 
-            match group.groupMembers |> Set.contains (groupToRemove |> groupToGroupMember) with
-            | true -> GroupMemberRemoved(group.name, groupToRemove.name) |> Choice1Of2
+            let groupMember = groupToRemove |> groupToGroupMember
+            match group.members |> Set.contains groupMember with
+            | true -> groupMember |> GroupMemberRemoved |> Choice1Of2
             | _ -> ["Not member."] |> Choice2Of2
 
     | RemoveUserMember user ->
         match isInternalGroup with
         | true -> ["Internal group."] |> Choice2Of2
         | _ ->
-            match group.groupMembers |> Set.contains (user |> userToGroupMember) with
-            | true -> GroupUserRemoved(group.name, user.userName) |> Choice1Of2
+            let groupMember = user |> userToGroupMember
+            match group.members |> Set.contains groupMember with
+            | true -> groupMember |> GroupUserRemoved |> Choice1Of2
             | _ -> ["Not member"] |> Choice2Of2

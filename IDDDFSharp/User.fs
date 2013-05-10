@@ -4,7 +4,7 @@ type User = {
     tenantId : TenantId;
     enablement : Enablement;
     userName : string;
-    password : string;
+    password : EncryptedPassword;
     person : Person;
 }
     
@@ -35,6 +35,8 @@ and ContactInformation = {
     secondaryPhone : Telephone;
 }
 
+and EncryptedPassword = EncryptedPassword of string
+
 
 type Command =
     | Register of TenantId * string * string * Enablement * Person
@@ -45,25 +47,35 @@ type Command =
 
 
 type Event =
+    | UserRegistered of TenantId * string * EncryptedPassword * Enablement * Person
     | ContactInformationChanged of ContactInformation
     | PersonNameChanged of FullName
     | UserEnablementChanged of Enablement
-    | UserPasswordChanged of string
-    | UserRegistered of EmailAddress
+    | UserPasswordChanged of EncryptedPassword    
 
 
 let apply user = 
     function
-    | UserRegistered(emailAddress)       -> { user with person = { user.person with contact = { user.person.contact with emailAddress = emailAddress } } }
-    | UserPasswordChanged(userName)      -> user
-    | UserEnablementChanged(enablement)  -> { user with enablement = enablement }
-    | ContactInformationChanged(contact) -> { user with person = { user.person with contact = contact } }
-    | PersonNameChanged(name)            -> { user with person = { user.person with fullName = name } }
+    | UserRegistered (tenantId,userName,password,enablement,person) -> { tenantId = tenantId; userName = userName; password = password; enablement = enablement; person = person }
+    | UserPasswordChanged password                                  -> { user with password = password }
+    | UserEnablementChanged enablement                              -> { user with enablement = enablement }
+    | ContactInformationChanged contact                             -> { user with person = { user.person with contact = contact } }
+    | PersonNameChanged name                                        -> { user with person = { user.person with fullName = name } }
 
 let exec (user:User) = 
+    let encrypt (password:string) = EncryptedPassword(password)
+    let isWeak (password:string) = false
     function
-    | Register (tenantId,userName,password,enablement,person) -> UserRegistered(person.contact.emailAddress) |> Choice1Of2
-    | ChangePassword (current,changeTo)                       -> UserPasswordChanged(user.userName) |> Choice1Of2
+    | Register (tenantId,userName,password,enablement,person) -> 
+        let password = password |> encrypt
+        UserRegistered(tenantId,userName,password,enablement,person) |> Choice1Of2
+    | ChangePassword (current,changeTo) ->         
+        match user.password = (current |> encrypt) with
+        | true ->
+            match changeTo |> isWeak with
+            | true -> ["Password is weak."] |> Choice2Of2
+            | _ -> changeTo |> encrypt |> UserPasswordChanged |> Choice1Of2
+        | _ -> ["Current password doesn't match."] |> Choice2Of2
     | ChangeContactInformation contact                        -> ContactInformationChanged(contact) |> Choice1Of2
     | ChangeName name                                         -> PersonNameChanged(name) |> Choice1Of2
     | DefineEnablement enablement                             -> UserEnablementChanged(enablement) |> Choice1Of2
