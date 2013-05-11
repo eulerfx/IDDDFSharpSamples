@@ -87,3 +87,42 @@ let exec tenant =
             let role = Role.make (tenant.tenantId,name,description,supportsNesting)
             RoleProvisioned(name) |> Choice1Of2
         | _ -> ["Tenant is not active"] |> Choice2Of2     
+
+
+
+
+module Authorization =        
+
+    let isUserInRole (roleNamed,userNamed,groupNamed) (user:User.User,roleName:string) =
+        let role : Role.Role option = roleNamed (user.tenantId,roleName)        
+        match role with
+        | Some role ->
+
+            let confirmUser (group:Group.Group,user:User.User) =
+                let confirmedUser : User.User option = userNamed (group.tenantId,user.userName)     
+                match confirmedUser with
+                | Some user when user.enablement.enabled -> true
+                | _ -> false
+
+            let rec isUserInNestedGroup (group:Group.Group,user:User.User) =
+            
+                let isInNestedGroup (groupMember:Group.GroupMember) =
+                    let nestedGroup : Group.Group option = groupNamed (groupMember.tenantId,groupMember.name)
+                    match nestedGroup with
+                    | Some nestedGroup -> Group.isMember (nestedGroup,user,confirmUser,isUserInNestedGroup)
+                    | None -> false
+                
+                group.members 
+                    |> Seq.filter (fun m -> m.memberType = Group.GroupMemberType.Group)
+                    |> Seq.tryFind isInNestedGroup 
+                    |> Option.isSome
+                    
+            Group.isMember (role.group,user,confirmUser,isUserInNestedGroup)
+
+        | None -> false
+        
+
+    let isUserInRoleByUserName (roleNamed,userNamed,groupNamed) (tenantId:TenantId,userName:string,roleName:string) =
+        match (tenantId,userName) |> userNamed with
+        | Some user -> isUserInRole (roleNamed,userNamed,groupNamed) (user,roleName)
+        | None -> false

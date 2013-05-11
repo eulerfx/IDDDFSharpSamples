@@ -19,7 +19,9 @@ and GroupMemberType = Group | User
  
 let Zero = { tenantId = TenantId(""); name = ""; description = ""; members = Set.empty; }
     
-type IsMemberGroup = Group -> GroupMember -> bool
+type IsMemberGroup = Group * GroupMember -> bool
+type ConfirmUser = Group * User.User -> bool
+type IsUserInNestedGroup = Group * User.User -> bool
 
 type Command =
     | Create of TenantId * string * string
@@ -34,12 +36,7 @@ type Event =
     | GroupMemberRemoved of GroupMember
     | GroupUserAdded of GroupMember
     | GroupUserRemoved of GroupMember
-    
-let make (tenantId,name,description) = { tenantId = tenantId; name = name; description = description; members = Set.empty }
-
-let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
-
-let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
+   
 
 let apply (group:Group) =
     let change change groupMember = { group with members = group.members |> change groupMember }
@@ -51,6 +48,19 @@ let apply (group:Group) =
     | GroupMemberRemoved groupMember      -> groupMember |> remove 
     | GroupUserAdded groupMember          -> groupMember |> add 
     | GroupUserRemoved groupMember        -> groupMember |> remove 
+
+
+let make (tenantId,name,description) = { tenantId = tenantId; name = name; description = description; members = Set.empty }
+
+let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
+
+let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
+
+let isMember (group,user,confirmUser,isUserInNestedGroup) : bool =    
+    let isMember = group.members |> Set.contains (user |> userToGroupMember)
+    match isMember with
+    | true  -> (group,user) |> confirmUser
+    | false -> (group,user) |> isUserInNestedGroup
 
 
 let exec (group:Group) =     

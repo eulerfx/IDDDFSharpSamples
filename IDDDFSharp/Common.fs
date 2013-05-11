@@ -26,11 +26,11 @@ type FullName = {
     lastName : string;
 };
 
-type EventMeta = {
-    version : int;
-    occurredOn : DateTime;
-    tenantId : string;
-    userName : string;
-}
-    with static member Null = { version = 0; occurredOn = DateTime.MinValue; tenantId = null; userName = null }    
+//type EventMeta = {
+//    version : int;
+//    occurredOn : DateTime;
+//    tenantId : string;
+//    userName : string;
+//}
+//    with static member Null = { version = 0; occurredOn = DateTime.MinValue; tenantId = null; userName = null }    
             
