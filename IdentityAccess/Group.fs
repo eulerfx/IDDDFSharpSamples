@@ -63,6 +63,13 @@ let isMember (group,user,confirmUser,isUserInNestedGroup) : bool =
     | false -> (group,user) |> isUserInNestedGroup
 
 
+let isInternalGroup (group:Group) = group.name.StartsWith(RoleGroupPrefix)
+
+module private Assert =
+    let nonInternal group = validator (fun g -> g |> isInternalGroup |> not) ["The group is internal."] group
+    let uniqueMember (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember |> not) ["The member is already part of the group."] group
+    let memberExists (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember) ["The member is not part of the group."] group
+
 let exec (group:Group) =     
         
     let isInternalGroup = group.name.StartsWith(RoleGroupPrefix)        
@@ -71,39 +78,18 @@ let exec (group:Group) =
          
     | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Choice1Of2
 
-    | AddGroupMember (groupToAdd,isMemberGroup) ->            
-        match isInternalGroup with
-        | true -> ["Internal group."] |> Choice2Of2 
-        | _ -> 
-            let groupMember = groupToAdd |> groupToGroupMember
-            match group.members |> Set.contains groupMember with
-            | false -> groupMember |> GroupMemberAdded |> Choice1Of2
-            | _     -> ["Already member."] |> Choice2Of2                                 
+    | AddGroupMember (groupToAdd,isMemberGroup) ->
+        let groupMember = groupToAdd |> groupToGroupMember
+        Assert.nonInternal group <* Assert.uniqueMember (group,groupMember) <?> GroupMemberAdded groupMember
 
     | AddGroupUser user ->             
-        match isInternalGroup with
-        | true -> ["Internal group."] |> Choice2Of2 
-        | _ ->
-            let groupMember = user |> userToGroupMember
-            match group.members |> Set.contains groupMember with
-            | false -> groupMember |> GroupUserAdded |> Choice1Of2
-            | _ -> ["Already member."] |> Choice2Of2
-            
+        let groupMember = user |> userToGroupMember
+        Assert.nonInternal group <* Assert.uniqueMember (group,groupMember) <?> GroupMemberAdded groupMember            
 
     | RemoveGroupMember groupToRemove ->
-        match isInternalGroup with
-        | true -> ["Internal group."] |> Choice2Of2 
-        | _ -> 
-            let groupMember = groupToRemove |> groupToGroupMember
-            match group.members |> Set.contains groupMember with
-            | true -> groupMember |> GroupMemberRemoved |> Choice1Of2
-            | _ -> ["Not member."] |> Choice2Of2
+        let groupMember = groupToRemove |> groupToGroupMember
+        Assert.nonInternal group <* Assert.memberExists (group,groupMember) <?> GroupMemberRemoved groupMember
 
     | RemoveUserMember user ->
-        match isInternalGroup with
-        | true -> ["Internal group."] |> Choice2Of2
-        | _ ->
-            let groupMember = user |> userToGroupMember
-            match group.members |> Set.contains groupMember with
-            | true -> groupMember |> GroupUserRemoved |> Choice1Of2
-            | _ -> ["Not member"] |> Choice2Of2
+        let groupMember = user |> userToGroupMember
+        Assert.nonInternal group <* Assert.memberExists (group,groupMember) <?> GroupMemberRemoved groupMember

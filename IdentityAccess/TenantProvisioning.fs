@@ -1,45 +1,69 @@
 ﻿module TenantProvisioning
 
+
+
+type ActionBuilder() =
+        
+    member x.Bind(expr, func) =
+        match expr with
+        | Choice1Of2 r -> func r
+        | Choice2Of2 e -> e |> Choice2Of2
+
+    member x.Return(value) = value |> Choice1Of2
+
+    member x.ReturnFrom(value) = value
+
+    member x.Zero() = Choice1Of2 ()
+
+    member x.Run(expr) = expr
+
+    member x.Delay(func) = 
+        match func() with
+        | Choice1Of2 r -> r |> Choice1Of2
+        | Choice2Of2 e -> e |> Choice2Of2
+
+
+
+let action = new ActionBuilder()
+
+
+
+
 open Tenant
 open User
 
+
 type Event = Tenant of Tenant.Event | User of User.Event | Role of Role.Event
 
-let provision (name,description,adminName,emailAddress,postalAddress,primaryPhone,secondaryPhone) =        
-    let tenantId = TenantId("")
-    let tenant = { tenantId = tenantId; name = name; description = description; active = true; invitations = Set.empty }
-    let e = "init" |> OfferRegistrationInvitation |> Tenant.exec tenant
-    match e with
-    | Choice1Of2 e ->
-        let person = {        
-            fullName = adminName;
-            contact = { emailAddress = EmailAddress(emailAddress);
-                        postalAddress = postalAddress;
-                        primaryPhone = primaryPhone;
-                        secondaryPhone = secondaryPhone; } }
-        let admin = Tenant.registerUser (tenant, null, "admin", EncryptedPassword(""), Enablement.Indefinite, person)
-        match admin with
-        | Some admin ->                    
-            let e2 = "init" |> WithdrawInvitation |> Tenant.exec tenant
-            match e2 with
-            | Choice1Of2 e2 ->
-                let adminRole = Tenant.provisionRole (tenant, "Administrator", "Default " + tenant.name + " administrator", false)           
-                let e3 = admin |> Role.AssignUser |> Role.exec adminRole            
-                match e3 with
-                | Choice1Of2 e3 -> 
-                  [ Tenant(e); 
-                    Tenant(e2); 
-                    Role(e3); 
-                    Tenant(AdministratorRegistered(adminName,"","")); 
-                    Tenant(Created(tenantId,name,description,false)); ]  |> Choice1Of2
-                | Choice2Of2 e -> e |> Choice2Of2
-            | Choice2Of2 e -> e |> Choice2Of2        
-        | None -> ["Could not register admin."] |> Choice2Of2
-    | Choice2Of2 e -> e |> Choice2Of2
 
-    // create tenant        
-    // create admin user
-    // withdraw invite
-    // create admin role
-    // assign admin to admin role
-    // raise tenant provisioned event
+let execApply tenant command = action {
+    let! e = Tenant.exec tenant command
+    return (Tenant.apply tenant e,e)
+}
+
+let provision (name,description,adminName,emailAddress,postalAddress,primaryPhone,secondaryPhone) = action {   
+    
+    let! (tenant,e0) = (TenantId(""),name,description,true) |> Provision |> execApply Tenant.Zero
+
+    let! (tenant,e1) = "init" |> OfferRegistrationInvitation |> execApply tenant
+    
+    let person = {        
+        fullName = adminName;
+        contact = { emailAddress = EmailAddress(emailAddress);
+                    postalAddress = postalAddress;
+                    primaryPhone = primaryPhone;
+                    secondaryPhone = secondaryPhone; } }
+    
+    let! admin = Tenant.registerUser (tenant,null,"admin",EncryptedPassword(""),Enablement.Indefinite,person)
+           
+    let! (tenant,e2) = "init" |> WithdrawInvitation |> execApply tenant
+
+    let! adminRole = Tenant.provisionRole (tenant, "Administrator", "Default " + tenant.name + " administrator", false)           
+    let e3 = AdministratorRegistered(tenant.name,adminName,person.contact.emailAddress,admin.userName,admin.password)
+
+    let! e4 = admin |> Role.AssignUser |> Role.exec adminRole            
+        
+    return (e0,e1,e2,e3,e4)
+
+    //return [ Tenant(e); Tenant(e2); Role(e3); Tenant(AdministratorRegistered(tenant.name, adminName, person.contact.emailAddress, admin.userName, admin.password)); Tenant(Provisioned(tenantId,name,description,false)); ]
+}
