@@ -46,6 +46,9 @@
     <Compile Include="Group.fs" />
     <Compile Include="Role.fs" />
     <Compile Include="Tenant.fs" />
+    <Compile Include="Authorization.fs" />
+    <Compile Include="Authentication.fs" />
+    <Compile Include="TenantProvisioning.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

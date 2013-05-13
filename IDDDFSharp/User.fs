@@ -7,24 +7,23 @@ type User = {
     password : EncryptedPassword;
     person : Person;
 }
+    with member x.Descriptor = { tenantId = x.tenantId; userName = x.userName; emailAddress = x.person.contact.emailAddress }   
     
 and UserDescriptor = {
     tenantId : TenantId;
-    emailAddress : string;
+    emailAddress : EmailAddress;
     userName : string;
 }
-    with static member Null = { tenantId = TenantId(null); emailAddress = null; userName = null }
+    with static member Null = { tenantId = TenantId(null); emailAddress = EmailAddress(""); userName = null }
     
 and Enablement = {
     enabled : bool;
-    validDuring : DateTime * DateTime;
+    validDuring : Duration;
 }
-    with static member Indefinite = { enabled = true; validDuring = (DateTime.MinValue,DateTime.MinValue) }
+    with static member Indefinite = { enabled = true; validDuring = Duration.OpenEnded }
 
 and Person = {
-    tenantId : string;
     fullName : FullName;
-    user : User;
     contact : ContactInformation;
 }
 

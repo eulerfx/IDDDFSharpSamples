@@ -1,5 +1,7 @@
-﻿module Tenant
-    
+﻿module Tenant                                  
+
+open User
+
 type Tenant = {
     tenantId : TenantId;
     active : bool;
@@ -12,9 +14,10 @@ and RegistrationInvitation = {
     tenantId : TenantId;
     invitationId : string;
     description : string;
-    duration : DateTime * DateTime;
+    duration : Duration;
 }
 
+let Zero = { tenantId = TenantId(""); active = false; name = null; description = null; invitations = Set.empty }
 
 type Command = 
     | Create of TenantId * string * string * bool
@@ -49,6 +52,20 @@ let apply tenant =
     | AdministratorRegistered _                  -> tenant
 
 
+
+
+let findInvite tenant inviteId = tenant.invitations |> Seq.tryFind (fun i -> i.invitationId = inviteId)
+
+let registerUser (tenant,inviteId,userName,password,enablement,person) =
+    match findInvite tenant inviteId with
+    | Some invite when invite.duration.IsAvailable -> 
+        Some { tenantId = tenant.tenantId; userName = userName; password = password; enablement = enablement; person = person; }
+    | _ -> None
+
+
+let provisionRole (tenant:Tenant,name,description,supportsNesting) = Role.make (tenant.tenantId,name,description,supportsNesting)
+
+
 let exec tenant = 
     function
 
@@ -65,11 +82,11 @@ let exec tenant =
         | _ -> ["Already inactive."] |> Choice2Of2
 
     | OfferRegistrationInvitation description ->
-        let invite = { tenantId = tenant.tenantId; invitationId = Guid.NewGuid().ToString(); description = description; duration = (DateTime.MinValue,DateTime.MinValue) }
+        let invite = { tenantId = tenant.tenantId; invitationId = Guid.NewGuid().ToString(); description = description; duration = Duration.OpenEnded }
         RegistrationInvitationReceived invite |> Choice1Of2
 
     | WithdrawInvitation inviteId -> 
-        let invite = tenant.invitations |> Seq.tryFind (fun i -> i.invitationId = inviteId)
+        let invite = findInvite tenant inviteId
         match invite with
         | Some invite -> InvitationWithdrawn(invite) |> Choice1Of2
         | None -> ["Invite not found."] |> Choice2Of2
@@ -86,43 +103,4 @@ let exec tenant =
         | true ->
             let role = Role.make (tenant.tenantId,name,description,supportsNesting)
             RoleProvisioned(name) |> Choice1Of2
-        | _ -> ["Tenant is not active"] |> Choice2Of2     
-
-
-
-
-module Authorization =        
-
-    let isUserInRole (roleNamed,userNamed,groupNamed) (user:User.User,roleName:string) =
-        let role : Role.Role option = roleNamed (user.tenantId,roleName)        
-        match role with
-        | Some role ->
-
-            let confirmUser (group:Group.Group,user:User.User) =
-                let confirmedUser : User.User option = userNamed (group.tenantId,user.userName)     
-                match confirmedUser with
-                | Some user when user.enablement.enabled -> true
-                | _ -> false
-
-            let rec isUserInNestedGroup (group:Group.Group,user:User.User) =
-            
-                let isInNestedGroup (groupMember:Group.GroupMember) =
-                    let nestedGroup : Group.Group option = groupNamed (groupMember.tenantId,groupMember.name)
-                    match nestedGroup with
-                    | Some nestedGroup -> Group.isMember (nestedGroup,user,confirmUser,isUserInNestedGroup)
-                    | None -> false
-                
-                group.members 
-                    |> Seq.filter (fun m -> m.memberType = Group.GroupMemberType.Group)
-                    |> Seq.tryFind isInNestedGroup 
-                    |> Option.isSome
-                    
-            Group.isMember (role.group,user,confirmUser,isUserInNestedGroup)
-
-        | None -> false
-        
-
-    let isUserInRoleByUserName (roleNamed,userNamed,groupNamed) (tenantId:TenantId,userName:string,roleName:string) =
-        match (tenantId,userName) |> userNamed with
-        | Some user -> isUserInRole (roleNamed,userNamed,groupNamed) (user,roleName)
-        | None -> false
+        | _ -> ["Tenant is not active"] |> Choice2Of2
