@@ -62,19 +62,17 @@ let apply user =
     | PersonNameChanged name                                        -> { user with person = { user.person with fullName = name } }
 
 let exec (user:User) = 
-    let encrypt (password:string) = EncryptedPassword(password)
-    let isWeak (password:string) = false
+    let encrypt password = EncryptedPassword(password)
+    let assertCurrentPasswordMatch (current,changeTo) = validator (fun p -> p = (changeTo |> encrypt)) ["Invalid current password specified."] current
+    let assertStrongPassword password = validator (fun _ -> true) ["Password too weak."] password
     function
     | Register (tenantId,userName,password,enablement,person) -> 
         let password = password |> encrypt
         UserRegistered(tenantId,userName,password,enablement,person) |> Choice1Of2
-    | ChangePassword (current,changeTo) ->         
-        match user.password = (current |> encrypt) with
-        | true ->
-            match changeTo |> isWeak with
-            | true -> ["Password is weak."] |> Choice2Of2
-            | _ -> changeTo |> encrypt |> UserPasswordChanged |> Choice1Of2
-        | _ -> ["Current password doesn't match."] |> Choice2Of2
-    | ChangeContactInformation contact                        -> ContactInformationChanged(contact) |> Choice1Of2
-    | ChangeName name                                         -> PersonNameChanged(name) |> Choice1Of2
-    | DefineEnablement enablement                             -> UserEnablementChanged(enablement) |> Choice1Of2
+    | ChangePassword (current,changeTo) ->
+        assertCurrentPasswordMatch (user.password,current) 
+        <* assertStrongPassword(changeTo) 
+        <?> UserPasswordChanged(changeTo |> encrypt)
+    | ChangeContactInformation contact -> ContactInformationChanged(contact) |> Choice1Of2
+    | ChangeName name -> PersonNameChanged(name) |> Choice1Of2
+    | DefineEnablement enablement -> UserEnablementChanged(enablement) |> Choice1Of2

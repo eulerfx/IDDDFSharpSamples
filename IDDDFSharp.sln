@@ -3,6 +3,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "IdentityAccess", "IdentityAccess\IdentityAccess.fsproj", "{73538AD1-F63D-4750-977C-AC6C92A39F41}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Collaboration", "Collaboration\Collaboration.fsproj", "{F9E71475-06C0-4DB4-8E95-928A8CFDF875}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "AgilePM", "AgilePM\AgilePM.fsproj", "{CA25FF64-E622-49DE-9206-C80E9C2A9607}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +17,14 @@ Global
 		{73538AD1-F63D-4750-977C-AC6C92A39F41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{73538AD1-F63D-4750-977C-AC6C92A39F41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{73538AD1-F63D-4750-977C-AC6C92A39F41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9E71475-06C0-4DB4-8E95-928A8CFDF875}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9E71475-06C0-4DB4-8E95-928A8CFDF875}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9E71475-06C0-4DB4-8E95-928A8CFDF875}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9E71475-06C0-4DB4-8E95-928A8CFDF875}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA25FF64-E622-49DE-9206-C80E9C2A9607}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA25FF64-E622-49DE-9206-C80E9C2A9607}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA25FF64-E622-49DE-9206-C80E9C2A9607}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA25FF64-E622-49DE-9206-C80E9C2A9607}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

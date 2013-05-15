@@ -63,9 +63,8 @@ let isMember (group,user,confirmUser,isUserInNestedGroup) : bool =
     | false -> (group,user) |> isUserInNestedGroup
 
 
-let isInternalGroup (group:Group) = group.name.StartsWith(RoleGroupPrefix)
-
 module private Assert =    
+    let isInternalGroup (group:Group) = group.name.StartsWith(RoleGroupPrefix)
     let nonInternal group = validator (isInternalGroup >> not) ["The group is internal."] group
     let uniqueMember (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember |> not) ["The member is already part of the group."] group
     let memberExists (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember) ["The member is not part of the group."] group
