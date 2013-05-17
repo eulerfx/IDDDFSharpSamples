@@ -68,11 +68,11 @@ let exec (user:User) =
     function
     | Register (tenantId,userName,password,enablement,person) -> 
         let password = password |> encrypt
-        UserRegistered(tenantId,userName,password,enablement,person) |> Choice1Of2
+        UserRegistered(tenantId,userName,password,enablement,person) |> Success
     | ChangePassword (current,changeTo) ->
         assertCurrentPasswordMatch (user.password,current) 
         <* assertStrongPassword(changeTo) 
         <?> UserPasswordChanged(changeTo |> encrypt)
-    | ChangeContactInformation contact -> ContactInformationChanged(contact) |> Choice1Of2
-    | ChangeName name -> PersonNameChanged(name) |> Choice1Of2
-    | DefineEnablement enablement -> UserEnablementChanged(enablement) |> Choice1Of2
+    | ChangeContactInformation contact -> ContactInformationChanged(contact) |> Success
+    | ChangeName name -> PersonNameChanged(name) |> Success
+    | DefineEnablement enablement -> UserEnablementChanged(enablement) |> Success

@@ -4,7 +4,7 @@ open Role
 open User
 open Group
 
-let isUserInRole (roleNamed,userNamed,groupNamed) (user:User.User,roleName:string) =
+let isUserInRole (roleNamed,userNamed,groupNamed) (user:User.User,roleName) =
     let role : Role.Role option = roleNamed (user.tenantId,roleName)        
     match role with
     | Some role ->
@@ -33,7 +33,7 @@ let isUserInRole (roleNamed,userNamed,groupNamed) (user:User.User,roleName:strin
     | None -> false
         
 
-let isUserInRoleByUserName (roleNamed,userNamed,groupNamed) (tenantId:TenantId,userName:string,roleName:string) =
+let isUserInRoleByUserName (roleNamed,userNamed,groupNamed) (tenantId:TenantId,userName,roleName) =
     match (tenantId,userName) |> userNamed with
     | Some user -> isUserInRole (roleNamed,userNamed,groupNamed) (user,roleName)
     | None -> false

@@ -66,8 +66,8 @@ module private Assert =
 let registerUser (tenant,inviteId,userName,password,enablement,person) =
     match findInvite tenant inviteId with
     | Some invite when invite.duration.IsAvailable -> 
-        { tenantId = tenant.tenantId; userName = userName; password = password; enablement = enablement; person = person; } |> Choice1Of2
-    | _ -> ["Could not find effective invite."] |> Choice2Of2
+        { tenantId = tenant.tenantId; userName = userName; password = password; enablement = enablement; person = person; } |> Success
+    | _ -> ["Could not find effective invite."] |> Failure
 
 
 let provisionRole (tenant:Tenant,name,description,supportsNesting) = 
@@ -77,7 +77,7 @@ let provisionRole (tenant:Tenant,name,description,supportsNesting) =
 let exec tenant = 
     function
 
-    | Provision (tenantId,name,description,active) -> Provisioned(tenantId,name,description,active) |> Choice1Of2
+    | Provision (tenantId,name,description,active) -> Provisioned(tenantId,name,description,active) |> Success
 
     | Activate -> Assert.inactive tenant <?> Activated
 
@@ -90,8 +90,8 @@ let exec tenant =
     | WithdrawInvitation inviteId -> 
         let invite = findInvite tenant inviteId
         match invite with
-        | Some invite -> InvitationWithdrawn(invite) |> Choice1Of2
-        | None -> ["Invite not found."] |> Choice2Of2
+        | Some invite -> InvitationWithdrawn(invite) |> Success
+        | None -> ["Invite not found."] |> Failure
 
     | ProvisionGroup (name,description) ->
         Assert.active tenant <?> GroupProvisioned ((Group.make (tenant.tenantId,name,description)).name)

@@ -41,26 +41,31 @@ type Duration =
 
 
 
+type Result<'TSuccess, 'TFailure> =
+    | Success of 'TSuccess
+    | Failure of 'TFailure
+
+
 
 type ActionBuilder() =
         
     member x.Bind(expr, func) =
         match expr with
-        | Choice1Of2 r -> func r
-        | Choice2Of2 e -> e |> Choice2Of2
+        | Success r -> func r
+        | Failure e -> e |> Failure
 
-    member x.Return(value) = value |> Choice1Of2
+    member x.Return(value) = value |> Success
 
     member x.ReturnFrom(value) = value
 
-    member x.Zero() = Choice1Of2 ()
+    member x.Zero() = Success ()
 
     member x.Run(expr) = expr
 
     member x.Delay(func) = 
         match func() with
-        | Choice1Of2 r -> r |> Choice1Of2
-        | Choice2Of2 e -> e |> Choice2Of2
+        | Success r -> r |> Success
+        | Failure e -> e |> Failure
 
 let action = new ActionBuilder()
 
@@ -71,29 +76,29 @@ let action = new ActionBuilder()
 module Validator =
 
     let validator predicate error x =
-        if predicate x then Choice1Of2 x
-        else Choice2Of2 error
+        if predicate x then Success x
+        else Failure error
 
     let (==) = LanguagePrimitives.PhysicalEquality
     let inline (!=) a b = not (a == b)
     let notNull e = validator ((!=) null) e
     let notEmptyString e = validator (fun (s:string) -> s.Length > 0) e
 
-    let puree = Choice1Of2
+    let puree = Success
 
     let apply f x =
         match f,x with
-        | Choice1Of2 f, Choice1Of2 x   -> Choice1Of2 (f x)
-        | Choice2Of2 e, Choice1Of2 x   -> Choice2Of2 e
-        | Choice1Of2 f, Choice2Of2 e   -> Choice2Of2 e
-        | Choice2Of2 e1, Choice2Of2 e2 -> Choice2Of2 (e1 @ e2)
+        | Success f, Success x   -> Success (f x)
+        | Failure e, Success x   -> Failure e
+        | Success f, Failure e   -> Failure e
+        | Failure e1, Failure e2 -> Failure (e1 @ e2)
 
     let (<*>) = apply
 
     let map f o =
         match o with
-        | Choice1Of2 x -> f x |> puree
-        | Choice2Of2 x -> Choice2Of2 x
+        | Success x -> f x |> puree
+        | Failure x -> Failure x
 
     let inline (<!>) f x = map f x
 
@@ -103,6 +108,6 @@ module Validator =
 
     let inline ( <*) a b = lift2 (fun z _ -> z) a b
 
-    let inline (<?>) a b = lift2 (fun _ z -> z) a              (Choice1Of2 b)
+    let inline (<?>) a b = lift2 (fun _ z -> z) a (Success b)
 
-    let inline (|?>) a b = lift2 (fun z _ -> z) (Choice1Of2 a) b
+    let inline (|?>) a b = lift2 (fun z _ -> z) (Success a) b

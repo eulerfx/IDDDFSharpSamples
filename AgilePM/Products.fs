@@ -37,14 +37,14 @@ and ProductBacklogItem = {
 }
 
 
-// TODO: make all error cases explicit.
-let toReadyDiscussion discussion descriptor = 
-    match descriptor,discussion.availability with
-    | Id _,Requested -> { availability = Ready; descriptor = descriptor; } |> Choice1Of2 
-    | _ -> ["Invalid state."] |> Choice2Of2
-
-
-let discussionFromAvailability a =
-    match a with
-    | Ready -> ["Cannot be created ready."] |> Choice2Of2
-    | _ -> { availability = a; descriptor = Undefined; } |> Choice1Of2  
+//// TODO: make all error cases explicit.
+//let toReadyDiscussion discussion descriptor = 
+//    match descriptor,discussion.availability with
+//    | Id _,Requested -> { availability = Ready; descriptor = descriptor; } |> Success 
+//    | _ -> ["Invalid state."] |> Failure
+//
+//
+//let discussionFromAvailability a =
+//    match a with
+//    | Ready -> ["Cannot be created ready."] |> Failure
+//    | _ -> { availability = a; descriptor = Undefined; } |> Success  

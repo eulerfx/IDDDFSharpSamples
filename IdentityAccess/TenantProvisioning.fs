@@ -10,7 +10,10 @@ let provision (name,description,adminName,emailAddress,postalAddress,primaryPhon
         return (Tenant.apply tenant e,e)
     }
         
-    let! (tenant,tenantProvisioned) = (TenantId(Guid.NewGuid().ToString()),name,description,true) |> Provision |> exec Tenant.Zero
+    let! (tenant,tenantProvisioned) = 
+        (TenantId(Guid.NewGuid().ToString()),name,description,true) 
+            |> Provision 
+            |> exec Tenant.Zero
 
     let! (tenant,registrationOfferReceived) = "init" |> OfferRegistrationInvitation |> exec tenant
     

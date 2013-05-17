@@ -56,9 +56,8 @@ let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group
 
 let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
 
-let isMember (group,user,confirmUser,isUserInNestedGroup) : bool =    
-    let isMember = group.members |> Set.contains (user |> userToGroupMember)
-    match isMember with
+let isMember (group,user,confirmUser:ConfirmUser,isUserInNestedGroup:IsUserInNestedGroup) =
+    match group.members |> Set.contains (user |> userToGroupMember) with
     | true  -> (group,user) |> confirmUser
     | false -> (group,user) |> isUserInNestedGroup
 
@@ -71,7 +70,7 @@ module private Assert =
 
 let exec (group:Group) = function                       
          
-    | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Choice1Of2
+    | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Success
 
     | AddGroupMember (groupToAdd,isMemberGroup) ->
         let groupMember = groupToAdd |> groupToGroupMember

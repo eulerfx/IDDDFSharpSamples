@@ -52,24 +52,24 @@ let exec role =
 
     function
    
-    | Create (tenantId,name,description,supportsNesting) -> (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> Created |> Choice1Of2
+    | Create (tenantId,name,description,supportsNesting) -> (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> Created |> Success
 
     | AssignGroup (group,isMemberGroup) -> 
         match (group,isMemberGroup) |> Group.AddGroupMember |> execGroup with
-        | Choice1Of2 e -> group |> Group.groupToGroupMember |> GroupAssignedToRole |> Choice1Of2
-        | Choice2Of2 e -> e |> Choice2Of2
+        | Success e -> group |> Group.groupToGroupMember |> GroupAssignedToRole |> Success
+        | Failure e -> e |> Failure
 
     | AssignUser user ->
         match user |> Group.AddGroupUser |> execGroup with
-        | Choice1Of2 _ -> user |> Group.userToGroupMember |> UserAssignedToRole |> Choice1Of2
-        | Choice2Of2 e -> e |> Choice2Of2
+        | Success _ -> user |> Group.userToGroupMember |> UserAssignedToRole |> Success
+        | Failure e -> e |> Failure
 
     | UnassignGroup group ->
         match group |> Group.RemoveGroupMember |> execGroup with
-        | Choice1Of2 _ -> group |> Group.groupToGroupMember |> GroupUnassignedFromRole |> Choice1Of2
-        | Choice2Of2 e -> Choice2Of2 e
+        | Success _ -> group |> Group.groupToGroupMember |> GroupUnassignedFromRole |> Success
+        | Failure e -> Failure e
 
     | UnassignUser user ->
         match user |> Group.RemoveUserMember |> execGroup with
-        | Choice1Of2 _ -> user |> Group.userToGroupMember |> UserUnassignedFromRole |> Choice1Of2
-        | Choice2Of2 e -> Choice2Of2 e
+        | Success _ -> user |> Group.userToGroupMember |> UserUnassignedFromRole |> Success
+        | Failure e -> Failure e
