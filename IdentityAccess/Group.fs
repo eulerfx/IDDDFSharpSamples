@@ -65,28 +65,28 @@ let isMember (group,user,confirmUser:ConfirmUser,isUserInNestedGroup:IsUserInNes
     | false -> (group,user) |> isUserInNestedGroup
 
 
-module private Assert =    
-    let isInternalGroup (group:Group) = group.name.StartsWith(RoleGroupPrefix)
-    let nonInternal group = validator (isInternalGroup >> not) ["The group is internal."] group
-    let uniqueMember (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember |> not) ["The member is already part of the group."] group
-    let memberExists (group,groupMember) = validator (fun g -> g.members |> Set.contains groupMember) ["The member is not part of the group."] group
-
-let exec (group:Group) = function                       
+let exec (group:Group) = 
+    
+    let assertNonInternal = validator (fun (g:Group) -> g.name.StartsWith(RoleGroupPrefix) |> not) ["The group is internal."] group
+    let assertUniqueMember groupMember = validator (fun g -> g.members |> Set.contains groupMember |> not) ["The member is already part of the group."] group
+    let assertMemberExists groupMember = validator (fun g -> g.members |> Set.contains groupMember) ["The member is not part of the group."] group
+    
+    function                       
          
     | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Success
 
     | AddGroupMember (groupToAdd,isMemberGroup) ->
         let groupMember = groupToAdd |> groupToGroupMember
-        Assert.nonInternal group <* Assert.uniqueMember (group,groupMember) <?> GroupMemberAdded groupMember
+        assertNonInternal <* assertUniqueMember groupMember <?> GroupMemberAdded groupMember
 
     | AddGroupUser user ->             
         let groupMember = user |> userToGroupMember
-        Assert.nonInternal group <* Assert.uniqueMember (group,groupMember) <?> GroupMemberAdded groupMember            
+        assertNonInternal <* assertUniqueMember groupMember <?> GroupMemberAdded groupMember            
 
     | RemoveGroupMember groupToRemove ->
         let groupMember = groupToRemove |> groupToGroupMember
-        Assert.nonInternal group <* Assert.memberExists (group,groupMember) <?> GroupMemberRemoved groupMember
+        assertNonInternal <* assertMemberExists groupMember <?> GroupMemberRemoved groupMember
 
     | RemoveUserMember user ->
         let groupMember = user |> userToGroupMember
-        Assert.nonInternal group <* Assert.memberExists (group,groupMember) <?> GroupMemberRemoved groupMember
+        assertNonInternal <* assertMemberExists groupMember <?> GroupMemberRemoved groupMember
