@@ -50,11 +50,14 @@ let apply (group:Group) =
     | GroupUserRemoved groupMember        -> groupMember |> remove 
 
 
-let make (tenantId,name,description) = { tenantId = tenantId; name = name; description = description; members = Set.empty }
+let make (tenantId,name,description) = 
+    { tenantId = tenantId; name = name; description = description; members = Set.empty } |> Success
 
-let groupToGroupMember (group:Group) = { tenantId = group.tenantId; name = group.name; memberType = Group }
+let groupToGroupMember (group:Group) = 
+    { tenantId = group.tenantId; name = group.name; memberType = Group }
 
-let userToGroupMember (user:User.User) = { tenantId = user.tenantId; name = user.userName; memberType = User }
+let userToGroupMember (user:User.User) = 
+    { tenantId = user.tenantId; name = user.userName; memberType = User }
 
 let isMember (group,user,confirmUser:ConfirmUser,isUserInNestedGroup:IsUserInNestedGroup) =
     match group.members |> Set.contains (user |> userToGroupMember) with

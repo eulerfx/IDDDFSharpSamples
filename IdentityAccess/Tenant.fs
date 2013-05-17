@@ -17,7 +17,7 @@ and RegistrationInvitation = {
     duration : Duration;
 }
 
-let Zero = { tenantId = TenantId(""); active = false; name = null; description = null; invitations = Set.empty }
+let Zero = { tenantId = TenantId(null); active = false; name = null; description = null; invitations = Set.empty }
 
 type Command = 
     | Provision of TenantId * string * string * bool
@@ -31,10 +31,10 @@ type Command =
     
 type Event =
     | Provisioned of TenantId * string * string * bool    
-    | GroupProvisioned of string
+    | GroupProvisioned of Group.Group
     | Activated
     | Deactivated
-    | RoleProvisioned of string
+    | RoleProvisioned of Role.Role
     | RegistrationInvitationReceived of RegistrationInvitation
     | InvitationWithdrawn of RegistrationInvitation
     | AdministratorRegistered of string * FullName * EmailAddress * string * EncryptedPassword
@@ -43,16 +43,18 @@ type Event =
 let apply tenant = 
     function
     | Provisioned (tenantId,name,description,active) -> { tenant with tenantId = tenantId; name = name; description = description; active = active; }
-    | GroupProvisioned groupName                 -> tenant
-    | RoleProvisioned roleName                   -> tenant
-    | Activated                                  -> { tenant with active = true }
-    | Deactivated                                -> { tenant with active = false }
-    | RegistrationInvitationReceived invite      -> { tenant with invitations = tenant.invitations |> Set.add invite }
-    | InvitationWithdrawn invite                 -> { tenant with invitations = tenant.invitations |> Set.remove invite }
-    | AdministratorRegistered _                  -> tenant
+    | GroupProvisioned group                         -> tenant
+    | RoleProvisioned role                           -> tenant
+    | Activated                                      -> { tenant with active = true }
+    | Deactivated                                    -> { tenant with active = false }
+    | RegistrationInvitationReceived invite          -> { tenant with invitations = tenant.invitations |> Set.add invite }
+    | InvitationWithdrawn invite                     -> { tenant with invitations = tenant.invitations |> Set.remove invite }
+    | AdministratorRegistered _                      -> tenant
 
 
-let findInvite tenant inviteId = tenant.invitations |> Seq.tryFind (fun i -> i.invitationId = inviteId || i.description = inviteId)
+let findInvite tenant inviteId = 
+    tenant.invitations 
+    |> Seq.tryFind (fun i -> i.invitationId = inviteId || i.description = inviteId)
 
 
 module private Assert =
@@ -60,7 +62,6 @@ module private Assert =
     let inactive tenant = validator (fun t -> t.active = true) ["The tenant is already active."] tenant
     let notInvited (tenant,inviteId) = validator (fun t -> findInvite tenant inviteId |> Option.isNone) ["The tenant was already invited."] tenant
     let invited (tenant,inviteId) = validator (fun t -> findInvite tenant inviteId |> Option.isSome) ["The tenant doesn't have the specified invite."] tenant
-
 
 
 let registerUser (tenant,inviteId,userName,password,enablement,person) =
@@ -71,8 +72,7 @@ let registerUser (tenant,inviteId,userName,password,enablement,person) =
 
 
 let provisionRole (tenant:Tenant,name,description,supportsNesting) = 
-    Assert.active tenant <?> Role.make (tenant.tenantId,name,description,supportsNesting)
-
+    Assert.active tenant *> Role.make (tenant.tenantId,name,description,supportsNesting)
 
 let exec tenant = 
     function
@@ -88,13 +88,12 @@ let exec tenant =
         Assert.active tenant <* Assert.notInvited (tenant,description) <?> RegistrationInvitationReceived invite
 
     | WithdrawInvitation inviteId -> 
-        let invite = findInvite tenant inviteId
-        match invite with
-        | Some invite -> InvitationWithdrawn(invite) |> Success
+        match findInvite tenant inviteId with
+        | Some invite -> invite |> InvitationWithdrawn |> Success
         | None -> ["Invite not found."] |> Failure
 
     | ProvisionGroup (name,description) ->
-        Assert.active tenant <?> GroupProvisioned ((Group.make (tenant.tenantId,name,description)).name)
+        Assert.active tenant *> Group.make (tenant.tenantId,name,description) <|> GroupProvisioned
         
     | ProvisionRole (name,description,supportsNesting) ->
-        Assert.active tenant <?> RoleProvisioned ((Role.make (tenant.tenantId,name,description,supportsNesting)).name)
+        Assert.active tenant *> Role.make (tenant.tenantId,name,description,supportsNesting) <|> RoleProvisioned

@@ -7,6 +7,9 @@ type DateTime = System.DateTime
 
 type Guid = System.Guid
 
+
+// TODO: validating constructor function for value objects
+
 type TenantId = TenantId of string
 
 type EmailAddress = EmailAddress of string
@@ -47,6 +50,7 @@ type Result<'TSuccess, 'TFailure> =
 
 
 
+// TODO: support all control flow constructs such as try/catch, do/while, etc.
 type ActionBuilder() =
         
     member x.Bind(expr, func) =
@@ -70,6 +74,8 @@ type ActionBuilder() =
 let action = new ActionBuilder()
 
 
+
+let inline flip f a b = f b a
 
 
 [<AutoOpen>]
@@ -95,12 +101,19 @@ module Validator =
 
     let (<*>) = apply
 
-    let map f o =
-        match o with
+    let map f x =
+        match x with
         | Success x -> f x |> puree
-        | Failure x -> Failure x
+        | Failure x -> x |> Failure
 
     let inline (<!>) f x = map f x
+
+    let inline (<|>) x f = map f x
+
+    let inline (<**>) x y = 
+        match x with
+        | Success x -> (x,y) |> Success
+        | Failure e -> e |> Failure
 
     let inline lift2 f a b = f <!> a <*> b
 

@@ -28,7 +28,7 @@ type Event =
 let private makeBackingGroup (tenantId,roleName,groupNameId) =
     let groupName = Group.RoleGroupPrefix + groupNameId
     let groupDesc = sprintf "Role backing group for: %s" roleName
-    Group.make (tenantId,groupName,groupDesc)
+    { Group.Group.tenantId = tenantId; Group.Group.name = groupName; Group.Group.description = groupDesc; Group.Group.members = Set.empty }
 
 let apply role =
     let applyToGroup event = { role with group = Group.apply role.group event }
@@ -36,15 +36,15 @@ let apply role =
     | Created (tenantId,name,description,supportsNesting,groupNameId) ->
         let group = makeBackingGroup (tenantId,name,groupNameId)
         { tenantId = tenantId; name = name; description = description; supportsNesting = supportsNesting; group = group }      
-    | GroupAssignedToRole groupMember                               -> groupMember |> Group.GroupMemberAdded |> applyToGroup
-    | GroupUnassignedFromRole groupMember                           -> groupMember |> Group.GroupMemberRemoved |> applyToGroup
-    | UserAssignedToRole groupMember                                -> groupMember |> Group.GroupUserAdded |> applyToGroup
-    | UserUnassignedFromRole groupMember                            -> groupMember |> Group.GroupUserRemoved |> applyToGroup
-    | RoleProvisioned roleName                                      -> role                
+    | GroupAssignedToRole groupMember     -> groupMember |> Group.GroupMemberAdded |> applyToGroup
+    | GroupUnassignedFromRole groupMember -> groupMember |> Group.GroupMemberRemoved |> applyToGroup
+    | UserAssignedToRole groupMember      -> groupMember |> Group.GroupUserAdded |> applyToGroup
+    | UserUnassignedFromRole groupMember  -> groupMember |> Group.GroupUserRemoved |> applyToGroup
+    | RoleProvisioned roleName            -> role                
 
 
 let make (tenantId,name,description,supportsNesting) = 
-    Created (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> apply Zero
+    Created (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> apply Zero |> Success
 
 let exec role =     
 
@@ -52,12 +52,12 @@ let exec role =
 
     function
    
-    | Create (tenantId,name,description,supportsNesting) -> (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> Created |> Success
+    | Create (tenantId,name,description,supportsNesting) -> 
+        (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> Created |> Success
 
-    | AssignGroup (group,isMemberGroup) -> 
-        match (group,isMemberGroup) |> Group.AddGroupMember |> execGroup with
-        | Success e -> group |> Group.groupToGroupMember |> GroupAssignedToRole |> Success
-        | Failure e -> e |> Failure
+    | AssignGroup (group,isMemberGroup) -> action {
+        let! _ = (group,isMemberGroup) |> Group.AddGroupMember |> execGroup
+        return group |> Group.groupToGroupMember |> GroupAssignedToRole }
 
     | AssignUser user ->
         match user |> Group.AddGroupUser |> execGroup with
