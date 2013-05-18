@@ -25,8 +25,8 @@ type IsUserInNestedGroup = Group * User.User -> bool
 
 type Command =
     | Create of TenantId * string * string
-    | AddGroupMember of Group * IsMemberGroup
-    | AddGroupUser of User.User
+    | AddGroupToGroup of Group * IsMemberGroup
+    | AddUserToGroup of User.User
     | RemoveGroupMember of Group
     | RemoveUserMember of User.User
 
@@ -75,11 +75,11 @@ let exec (group:Group) =
          
     | Create (tenantId,name,description) -> Created(tenantId,name,description) |> Success
 
-    | AddGroupMember (groupToAdd,isMemberGroup) ->
+    | AddGroupToGroup (groupToAdd,isMemberGroup) ->
         let groupMember = groupToAdd |> groupToGroupMember
         assertNonInternal <* assertUniqueMember groupMember <?> GroupMemberAdded groupMember
 
-    | AddGroupUser user ->             
+    | AddUserToGroup user ->             
         let groupMember = user |> userToGroupMember
         assertNonInternal <* assertUniqueMember groupMember <?> GroupMemberAdded groupMember            
 

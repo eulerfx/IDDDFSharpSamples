@@ -56,11 +56,11 @@ let exec role =
         (tenantId,name,description,supportsNesting,Guid.NewGuid().ToString()) |> Created |> Success
 
     | AssignGroup (group,isMemberGroup) -> action {
-        let! _ = (group,isMemberGroup) |> Group.AddGroupMember |> execGroup
+        let! _ = (group,isMemberGroup) |> Group.AddGroupToGroup |> execGroup
         return group |> Group.groupToGroupMember |> GroupAssignedToRole }
 
     | AssignUser user ->
-        match user |> Group.AddGroupUser |> execGroup with
+        match user |> Group.AddUserToGroup |> execGroup with
         | Success _ -> user |> Group.userToGroupMember |> UserAssignedToRole |> Success
         | Failure e -> e |> Failure
 

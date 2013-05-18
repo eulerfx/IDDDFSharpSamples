@@ -77,7 +77,8 @@ let provisionRole (tenant:Tenant,name,description,supportsNesting) =
 let exec tenant = 
     function
 
-    | Provision (tenantId,name,description,active) -> Provisioned(tenantId,name,description,active) |> Success
+    | Provision (tenantId,name,description,active) -> 
+        Provisioned(tenantId,name,description,active) |> Success
 
     | Activate -> Assert.inactive tenant <?> Activated
 

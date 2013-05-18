@@ -7,7 +7,9 @@ type User = {
     password : EncryptedPassword;
     person : Person;
 }
-    with member x.Descriptor = { tenantId = x.tenantId; userName = x.userName; emailAddress = x.person.contact.emailAddress }   
+    with member x.Descriptor = { tenantId = x.tenantId; 
+        userName = x.userName; 
+        emailAddress = x.person.contact.emailAddress }   
     
 and UserDescriptor = {
     tenantId : TenantId;
