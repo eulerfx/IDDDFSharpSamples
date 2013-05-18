@@ -65,14 +65,19 @@ let exec (user:User) =
     let encrypt password = EncryptedPassword(password)
     let assertCurrentPasswordMatch (current,changeTo) = validator (fun p -> p = (changeTo |> encrypt)) ["Invalid current password specified."] current
     let assertStrongPassword password = validator (fun _ -> true) ["Password too weak."] password
+
     function
+    
     | Register (tenantId,userName,password,enablement,person) -> 
         let password = password |> encrypt
         UserRegistered(tenantId,userName,password,enablement,person) |> Success
+
     | ChangePassword (current,changeTo) ->
-        assertCurrentPasswordMatch (user.password,current) 
-        <* assertStrongPassword(changeTo) 
+        assertCurrentPasswordMatch (user.password,current) <* assertStrongPassword(changeTo) 
         <?> UserPasswordChanged(changeTo |> encrypt)
+    
     | ChangeContactInformation contact -> ContactInformationChanged(contact) |> Success
+    
     | ChangeName name -> PersonNameChanged(name) |> Success
+    
     | DefineEnablement enablement -> UserEnablementChanged(enablement) |> Success

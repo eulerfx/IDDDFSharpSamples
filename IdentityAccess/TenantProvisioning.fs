@@ -8,6 +8,32 @@ open Role
 // TODO: implement event persistence and generalized execution context
 
 
+//type Aggregate<'TState, 'TCommand, 'TEvent> = {
+//    zero  : 'TState;
+//    apply : 'TState -> 'TEvent -> 'TState;
+//    exec  : 'TState -> 'TCommand -> Result<'TEvent, string list>
+//}
+//
+//let execApply aggregate state command = action {
+//    let! e = aggregate.exec state command
+//    return aggregate.apply state e,e
+//}
+//
+//let tenantAggregate = { zero = Tenant.Zero; apply = Tenant.apply; exec = Tenant.exec }
+//
+//let roleAggregate = { zero = Role.Zero; apply = Role.apply; exec = Role.exec }
+
+
+(*
+Provision
+OfferRegistrationInvitation
+registerUser
+WithdrawInvitation
+provisionRole
+AssignUser
+*)
+
+
 let provision (name,description,adminName,emailAddress,postalAddress,primaryPhone,secondaryPhone) = action {   
     
     let exec tenant command = action {
@@ -37,13 +63,13 @@ let provision (name,description,adminName,emailAddress,postalAddress,primaryPhon
         <**>
         AdministratorRegistered (tenant.name,adminName,person.contact.emailAddress,admin.userName,admin.password)
 
-    let! userAssignedToRole = admin |> Role.AssignUser |> Role.exec adminRole            
+    let! userAssignedToRole = admin |> AssignUser |> Role.exec adminRole            
         
-    return (tenantProvisioned,
-            registrationOfferReceived,
-            invitationWithdrawn,
-            adminRegistered,
-            userAssignedToRole)
+    return tenantProvisioned,
+           registrationOfferReceived,
+           invitationWithdrawn,
+           adminRegistered,
+           userAssignedToRole
 }
 
 

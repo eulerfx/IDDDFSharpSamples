@@ -17,7 +17,7 @@ type Product = {
     productId : ProductId;
     productOwnerId : ProductOwnerId;
     tenantId : TenantId;
-
+    backlogItems : ProductBacklogItem Set;
 } 
 
 and ProductDiscussion = {
@@ -37,14 +37,14 @@ and ProductBacklogItem = {
 }
 
 
-//// TODO: make all error cases explicit.
-//let toReadyDiscussion discussion descriptor = 
-//    match descriptor,discussion.availability with
-//    | Id _,Requested -> { availability = Ready; descriptor = descriptor; } |> Success 
-//    | _ -> ["Invalid state."] |> Failure
-//
-//
-//let discussionFromAvailability a =
-//    match a with
-//    | Ready -> ["Cannot be created ready."] |> Failure
-//    | _ -> { availability = a; descriptor = Undefined; } |> Success  
+// TODO: make all error cases explicit.
+let toReadyDiscussion discussion descriptor = 
+    match descriptor,discussion.availability with
+    | Id _,Requested -> { availability = Ready; descriptor = descriptor; } |> Success 
+    | _ -> ["Invalid state."] |> Failure
+
+
+let discussionFromAvailability a =
+    match a with
+    | Ready -> ["Cannot be created ready."] |> Failure
+    | _ -> { availability = a; descriptor = Undefined; } |> Success  
