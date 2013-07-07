@@ -45,6 +45,7 @@
     <Compile Include="Tenants.fs" />
     <Compile Include="Collaborators.fs" />
     <Compile Include="Calendars.fs" />
+    <Compile Include="Forums.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
