@@ -41,7 +41,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Collaborator.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="Tenants.fs" />
+    <Compile Include="Collaborators.fs" />
+    <Compile Include="Calendars.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
