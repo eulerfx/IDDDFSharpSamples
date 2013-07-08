@@ -52,11 +52,9 @@ module Forum =
         | ReOpened _                       -> { state with closed = false }
 
 
-    let exec state = 
-    
+    let exec state =     
         let assertOpen = validator (fun _ -> state.closed <> true) ["Forum must be open."] state
         let assertClosed = validator (fun _ -> state.closed) ["Forum must be closed."] state
-
         function
         | Start (id,creator,moderator,subject,desc,exclusiveOwner) ->
             Started (id,creator,moderator,subject,desc,exclusiveOwner) |> Success

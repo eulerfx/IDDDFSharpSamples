@@ -17,8 +17,7 @@ module Calendar =
         description : NonEmptyString;
         sharedWith : CalendarSharer Set; } 
 
-    and CalendarSharer = {
-        participant : Collaborators.Collaborator; }
+    and CalendarSharer = { participant : Collaborator; }
 
     type Command =
         | Create of Id * NonEmptyString * NonEmptyString * Collaborator * CalendarSharer Set
@@ -37,19 +36,21 @@ module Calendar =
 
     let apply state = function
         | Created (id,name,desc,owner,sharedWith) -> { id = id; name = name; description = desc; sharedWith = sharedWith }
-        | DescriptionChanged (_,desc) -> { state with description = desc }
-        | Renamed (_,name) -> { state with name = name }
-        | CalendarShared (_,name,sharedWith) -> { state with sharedWith = state.sharedWith |> Set.add sharedWith }
-        | CalendarUnshared (_,name,unsharedWith) -> { state with sharedWith = state.sharedWith |> Set.remove unsharedWith }
+        | DescriptionChanged (_,desc)             -> { state with description = desc }
+        | Renamed (_,name)                        -> { state with name = name }
+        | CalendarShared (_,name,sharedWith)      -> { state with sharedWith = state.sharedWith |> Set.add sharedWith }
+        | CalendarUnshared (_,name,unsharedWith)  -> { state with sharedWith = state.sharedWith |> Set.remove unsharedWith }
 
 
     let exec state = function
-        | Create (id,name,desc,owner,sharedWith) -> Created(id,name,desc,owner,sharedWith) |> Success
-        | ChangeDescription desc -> DescriptionChanged (state.id,desc) |> Success
-        | Rename name -> Renamed (state.id,name) |> Success
-        | ShareCalendarWith sharer -> CalendarShared (state.id,state.name,sharer) |> Success
-        | UnshareCalendarWith sharer -> CalendarUnshared (state.id,state.name,sharer) |> Success
+        | Create (id,name,desc,owner,sharedWith) -> [Created(id,name,desc,owner,sharedWith)] |> Success
+        | ChangeDescription desc                 -> [DescriptionChanged (state.id,desc)] |> Success
+        | Rename name                            -> [Renamed (state.id,name)] |> Success
+        | ShareCalendarWith sharer               -> [CalendarShared (state.id,state.name,sharer)] |> Success
+        | UnshareCalendarWith sharer             -> [CalendarUnshared (state.id,state.name,sharer)] |> Success
 
+
+    
 
 module CalendarEntry =
 
@@ -74,12 +75,12 @@ module CalendarEntry =
     
     and AlarmUnitsType = Days | Hours | Minutes
     
-    and DateRange = { begins : DateTime; ends : DateTime } 
-        with static member Create (begins,ends) = { begins = begins; ends = ends }
+    and DateRange = { begins : DateTime; ends : DateTime } with 
+        static member create (begins,ends) = { begins = begins; ends = ends }
 
     and Repetition = Repetition of RepeatType * DateTime option with 
-        static member DoesNotRepeat ends = Repetition(DoesNotRepeat,Some ends)
-        static member RepeatsIndefinitely repeatType = Repetition(repeatType,None)
+        static member doesNotRepeat ends = Repetition(DoesNotRepeat,Some ends)
+        static member repeatsIndefinitely repeatType = Repetition(repeatType,None)
 
     and RepeatType = DoesNotRepeat | Daily | Weekly | Monthly | Yearly
 
@@ -104,24 +105,21 @@ module CalendarEntry =
     let apply state = function
         | Scheduled(id,desc,location,owner,timeSpan,repetition,alarm,invitees) 
             -> { id = id; description = desc; location = location; owner = owner; timeSpan = timeSpan; repetition = repetition; alarm = alarm; invitees = invitees }
-        | DescriptionChanged(_,desc) -> { state with description = desc }
-        | ParticipantInvited(_,participant) -> { state with invitees = state.invitees |> Set.add participant }
+        | DescriptionChanged(_,desc)          -> { state with description = desc }
+        | ParticipantInvited(_,participant)   -> { state with invitees = state.invitees |> Set.add participant }
         | ParticipantUninvited(_,participant) -> { state with invitees = state.invitees |> Set.remove participant }
-        | Relocated(_,location) -> { state with location = location }
-        | Rescheduled(_,timeSpan,repetition,alarm) -> { state with timeSpan = timeSpan; repetition = repetition; alarm = alarm }
+        | Relocated(_,location)               -> { state with location = location }
+        | Rescheduled(_,timeSpan,repetition,alarm) 
+            -> { state with timeSpan = timeSpan; repetition = repetition; alarm = alarm }
 
 
     let exec (state:State) = function
         | Schedule(id,desc,location,owner,timeSpan,repetition,alarm,invitees) -> 
-            let repetition = match repetition with Repetition(DoesNotRepeat,_) -> Repetition.DoesNotRepeat (timeSpan.ends) | _ -> repetition
-            Scheduled(id,desc,location,owner,timeSpan,repetition,alarm,invitees) |> Success
-        
-        | ChangeDescription desc -> DescriptionChanged (state.id,desc) |> Success
-        
-        | Invite(participant) -> ParticipantInvited(state.id,participant) |> Success
-        
-        | Uninvite(participant) -> ParticipantUninvited(state.id,participant) |> Success
-        
-        | Relocate location -> Relocated(state.id,location) |> Success
-        
-        | Reschedule (desc,location,timeSpan,repetition,alarm) -> Rescheduled(state.id,timeSpan,repetition,alarm)  |> Success  
+            let repetition = match repetition with Repetition(DoesNotRepeat,_) -> Repetition.doesNotRepeat (timeSpan.ends) | _ -> repetition
+            [Scheduled(id,desc,location,owner,timeSpan,repetition,alarm,invitees)] |> Success        
+        | Reschedule (desc,location,timeSpan,repetition,alarm) -> 
+            [Rescheduled(state.id,timeSpan,repetition,alarm)]  |> Success
+        | ChangeDescription desc -> [DescriptionChanged (state.id,desc)] |> Success        
+        | Invite(participant)    -> [ParticipantInvited(state.id,participant)] |> Success        
+        | Uninvite(participant)  -> [ParticipantUninvited(state.id,participant)] |> Success        
+        | Relocate location      -> [Relocated(state.id,location)] |> Success          

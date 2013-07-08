@@ -127,3 +127,28 @@ module Validator =
     let inline (<?>) a b = lift2 (fun _ z -> z) a (Success b)
 
     let inline (|?>) a b = lift2 (fun z _ -> z) (Success a) b
+
+
+
+
+
+module Aggregate = 
+
+    type Aggregate<'TState, 'TCommand, 'TEvent> = {   
+        zero  : 'TState;
+        apply : 'TState -> 'TEvent -> 'TState;
+        exec  : 'TState -> 'TCommand -> Result<'TEvent list, string list>;
+    }
+
+    type Type = System.Type
+
+    type Id = System.Guid * int
+
+    let makeHandler (aggregate:Aggregate<'TState, 'TCommand, 'TEvent>) (load:Type * Id -> obj seq, commit:Id -> obj seq -> unit) =
+        fun id command ->
+            let events = load (typeof<'TEvent>,id) |> Seq.cast :> 'TEvent seq
+            let state = events |> Seq.fold aggregate.apply aggregate.zero 
+            let uncommitted = command |> aggregate.exec state 
+            match uncommitted with
+            | Success events -> events |> Seq.cast |> commit id |> Success
+            | Failure errors -> errors |> Failure
