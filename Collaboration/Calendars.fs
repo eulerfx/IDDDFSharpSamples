@@ -78,9 +78,9 @@ module CalendarEntry =
     and DateRange = { begins : DateTime; ends : DateTime } with 
         static member create (begins,ends) = { begins = begins; ends = ends }
 
-    and Repetition = Repetition of RepeatType * DateTime option with 
-        static member doesNotRepeat ends = Repetition(DoesNotRepeat,Some ends)
-        static member repeatsIndefinitely repeatType = Repetition(repeatType,None)
+    and Repetition = { repeatType: RepeatType; ends: DateTime option } with 
+        static member doesNotRepeat ends = { repeatType = DoesNotRepeat; ends = Some ends }
+        static member repeatsIndefinitely repeatType = { repeatType = repeatType; ends = None }
 
     and RepeatType = DoesNotRepeat | Daily | Weekly | Monthly | Yearly
 
@@ -103,19 +103,19 @@ module CalendarEntry =
 
 
     let apply state = function
-        | Scheduled(id,desc,location,owner,timeSpan,repetition,alarm,invitees) 
+        | Scheduled (id,desc,location,owner,timeSpan,repetition,alarm,invitees) 
             -> { id = id; description = desc; location = location; owner = owner; timeSpan = timeSpan; repetition = repetition; alarm = alarm; invitees = invitees }
-        | DescriptionChanged(_,desc)          -> { state with description = desc }
-        | ParticipantInvited(_,participant)   -> { state with invitees = state.invitees |> Set.add participant }
-        | ParticipantUninvited(_,participant) -> { state with invitees = state.invitees |> Set.remove participant }
-        | Relocated(_,location)               -> { state with location = location }
-        | Rescheduled(_,timeSpan,repetition,alarm) 
+        | DescriptionChanged (_,desc)          -> { state with description = desc }
+        | ParticipantInvited (_,participant)   -> { state with invitees = state.invitees |> Set.add participant }
+        | ParticipantUninvited (_,participant) -> { state with invitees = state.invitees |> Set.remove participant }
+        | Relocated (_,location)               -> { state with location = location }
+        | Rescheduled (_,timeSpan,repetition,alarm) 
             -> { state with timeSpan = timeSpan; repetition = repetition; alarm = alarm }
 
 
     let exec (state:State) = function
-        | Schedule(id,desc,location,owner,timeSpan,repetition,alarm,invitees) -> 
-            let repetition = match repetition with Repetition(DoesNotRepeat,_) -> Repetition.doesNotRepeat (timeSpan.ends) | _ -> repetition
+        | Schedule (id,desc,location,owner,timeSpan,repetition,alarm,invitees) -> 
+            let repetition = match repetition with { repeatType = DoesNotRepeat; ends = _ } -> Repetition.doesNotRepeat (timeSpan.ends) | _ -> repetition
             [Scheduled(id,desc,location,owner,timeSpan,repetition,alarm,invitees)] |> Success        
         | Reschedule (desc,location,timeSpan,repetition,alarm) -> 
             [Rescheduled(state.id,timeSpan,repetition,alarm)]  |> Success
