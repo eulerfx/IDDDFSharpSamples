@@ -1,23 +1,23 @@
 ﻿/// Integration with EventStore.
 [<RequireQualifiedAccess>]
-module EventStore
+module EventStoreModule
 
 [<AutoOpen>]
 module EventSourcing =
 
     type EventStreamId = {
-        name : string;
+        name    : string;
         version : int; }
 
     type EventStream = {
-        events : obj seq;
+        events  : obj seq;
         version : int; }
 
     type DispatchableDomainEvent = {
-        eventId : string;
-        version : int;
+        eventId    : string;
+        version    : int;
         occurredOn : System.DateTime;
-        event : obj; }
+        event      : obj; }
 
     
 
@@ -44,7 +44,7 @@ let private allEventsForward (conn:EventStoreConnection) (lastReceivedEvent:int6
         position := slice.NextPosition
 }    
 
-let private allStreamEventsForward (conn:EventStoreConnection) (stream,resolveLinks) = seq {    
+let private allStreamEventsForward (conn:EventStoreConnection) stream resolveLinks = seq {    
     let batchSize = 1000
     let isEnd = ref false
     let start = ref 1
@@ -61,19 +61,18 @@ let makeRepository (conn:EventStoreConnection) (category:string) (serialize:obj 
 
     let streamId (id:Guid) = category + "-" + id.ToString("N").ToLower()
 
-    let load (t,id) =
-        (streamId(id),false)
-        |> allStreamEventsForward conn 
+    let load (t,id) = 
+        allStreamEventsForward conn (streamId id) false
         |> Seq.map (fun e -> deserialize(t, e.Event.EventType, e.Event.Data))
 
-    let commit (id,expectedVersion) e = async {
+    let commit (id,expectedVersion) e =
         let streamId = streamId id
         let eventType,data = serialize e
         let metaData = [||] : byte array
         let eventData = new EventData(Guid.NewGuid(), eventType, true, data, metaData)
-        if expectedVersion = 0 then conn.CreateStreamAsync(streamId, Guid.NewGuid(), true, metaData) |> Async.AwaitIAsyncResult |> Async.Ignore |> ignore
-        return! conn.AppendToStreamAsync(streamId, expectedVersion, eventData) |> Async.AwaitIAsyncResult |> Async.Ignore
-    }
+        if expectedVersion = 0 
+            then conn.CreateStream(streamId, Guid.NewGuid(), true, metaData)
+        conn.AppendToStream(streamId, expectedVersion, eventData)
 
     load,commit
 

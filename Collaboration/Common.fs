@@ -2,6 +2,16 @@
 module Common
 
 [<AutoOpen>]
+module Guid = 
+
+    let make () = System.Guid.NewGuid()
+
+    let makeString () = (make()).ToString("N")
+
+    let emptyString = System.Guid.Empty.ToString("N")
+
+
+[<AutoOpen>]
 module Strings =
     
     type IString = 
@@ -37,8 +47,11 @@ module Strings =
 
 
     type NonEmptyString = NonEmptyString of string with
+        
         interface IString with
             member this.Value = let (NonEmptyString s) = this in s
+
+        static member Zero = NonEmptyString ""
 
     let nonEmptyString = create id (fun s -> s <> null && s.Length > 0) NonEmptyString
 
@@ -137,8 +150,7 @@ module Aggregate =
     type Aggregate<'TState, 'TCommand, 'TEvent> = {   
         zero  : 'TState;
         apply : 'TState -> 'TEvent -> 'TState;
-        exec  : 'TState -> 'TCommand -> Result<'TEvent list, string list>;
-    }
+        exec  : 'TState -> 'TCommand -> Result<'TEvent list, string list>; }
 
     type Type = System.Type
 

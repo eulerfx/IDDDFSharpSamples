@@ -23,7 +23,17 @@ module Forum =
         subject : NonEmptyString;
         description : NonEmptyString;
         exclusiveOwner : ExclusiveOwner;
-        closed : bool; }
+        closed : bool; 
+    }
+
+    with static member Zero = { 
+            id             = Tenant(Guid.emptyString),ForumId(Guid.emptyString); 
+            creator        = Collaborator.Zero; 
+            moderator      = Collaborator.Zero; 
+            subject        = NonEmptyString.Zero;
+            description    = NonEmptyString.Zero;
+            exclusiveOwner = None;
+            closed         = false; }
 
     type Command = 
         | Start of Id * Collaborator * Collaborator * NonEmptyString * NonEmptyString * ExclusiveOwner
@@ -43,8 +53,14 @@ module Forum =
         
 
     let apply state = function
-        | Started(id,creator,moderator,subject,desc,exclusiveOwner) -> 
-            { id = id; creator = creator; moderator = moderator; subject = subject; description = desc; exclusiveOwner = exclusiveOwner; closed = false; }        
+        | Started (id,creator,moderator,subject,desc,exclusiveOwner) 
+                                           -> { id = id; 
+                                                creator = creator; 
+                                                moderator = moderator; 
+                                                subject = subject; 
+                                                description = desc; 
+                                                exclusiveOwner = exclusiveOwner; 
+                                                closed = false; }        
         | ModeratorChanged (_,moderator,_) -> { state with moderator = moderator }
         | DescriptionChanged (_,desc,_)    -> { state with description = desc }
         | SubjectChanged (_,subject,_)     -> { state with subject = subject }
@@ -56,14 +72,17 @@ module Forum =
         let assertOpen = validator (fun _ -> state.closed <> true) ["Forum must be open."] state
         let assertClosed = validator (fun _ -> state.closed) ["Forum must be closed."] state
         function
-        | Start (id,creator,moderator,subject,desc,exclusiveOwner) ->
-            Started (id,creator,moderator,subject,desc,exclusiveOwner) |> Success
-        | AssignModerator moderator -> assertOpen <?> ModeratorChanged(state.id,moderator,state.exclusiveOwner)
-        | ChangeDescription desc    -> assertOpen <?> DescriptionChanged(state.id,desc,state.exclusiveOwner)
-        | ChangeSubject subject     -> assertOpen <?> SubjectChanged(state.id,subject,state.exclusiveOwner)
-        | Close                     -> assertOpen <?> Closed(state.id,state.exclusiveOwner)
-        | ReOpen                    -> assertClosed <?> ReOpened(state.id,state.exclusiveOwner)
-        
+        | Start (id,creator,moderator,subject,desc,exclusiveOwner) 
+                                    -> [Started(id,creator,moderator,subject,desc,exclusiveOwner)] |> Success
+        | AssignModerator moderator -> assertOpen <?> [ModeratorChanged(state.id,moderator,state.exclusiveOwner)]
+        | ChangeDescription desc    -> assertOpen <?> [DescriptionChanged(state.id,desc,state.exclusiveOwner)]
+        | ChangeSubject subject     -> assertOpen <?> [SubjectChanged(state.id,subject,state.exclusiveOwner)]
+        | Close                     -> assertOpen <?> [Closed(state.id,state.exclusiveOwner)]
+        | ReOpen                    -> assertClosed <?> [ReOpened(state.id,state.exclusiveOwner)]              
+            
+
+    
+
 
 module Discussion =    
 
@@ -91,7 +110,7 @@ module Discussion =
     
     let apply state = function
         | Started (id,author,subject,exclusiveOwner) 
-            -> { id = id; author = author; subject = subject; exclusiveOwner = exclusiveOwner; closed = false; }
+                     -> { id = id; author = author; subject = subject; exclusiveOwner = exclusiveOwner; closed = false; }
         | Closed _   -> { state with closed = true }
         | ReOpened _ -> { state with closed = false }
 
@@ -100,9 +119,9 @@ module Discussion =
         let assertClosed = validator (fun s -> s.closed) ["Discussion must be closed."] state
         function
         | Start (id,author,subject,exclusiveOwner) 
-            -> Started(id,author,subject,exclusiveOwner) |> Success
-        | Close   -> assertOpen <?> Closed(state.id,state.exclusiveOwner)
-        | ReOpen  -> assertClosed <?> ReOpened(state.id,state.exclusiveOwner)
+                  -> [Started(id,author,subject,exclusiveOwner)] |> Success
+        | Close   -> assertOpen <?> [Closed(state.id,state.exclusiveOwner)]
+        | ReOpen  -> assertClosed <?> [ReOpened(state.id,state.exclusiveOwner)]
 
 
 module Post =
@@ -131,6 +150,6 @@ module Post =
         | ContentAltered(id,subject,body) -> { state with subject = subject; body = body; }
 
     let exec state = function
-        | Post(id,author,subject,body,replyToPostId) -> Posted(id,author,subject,body,replyToPostId) |> Success
-        | AlterContent(subject,body) -> ContentAltered(state.id,subject,body) |> Success
+        | Post(id,author,subject,body,replyToPostId) -> [Posted(id,author,subject,body,replyToPostId)] |> Success
+        | AlterContent(subject,body)                 -> [ContentAltered(state.id,subject,body)] |> Success
     
